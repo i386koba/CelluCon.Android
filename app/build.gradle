@@ -1,0 +1,91 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        applicationId "com.cirlution.i386koba.droidrone"
+        minSdkVersion 15
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+        //http://stackoverflow.com/questions/31404372/com-android-dex-dexindexoverflowexception-errorexecution-failed-for-task
+        multiDexEnabled true
+    }
+    //Gradle で複数種類の apk をビルドする http://qiita.com/KeithYokoma/items/78b048cf35fd03b8c689
+    //開発ビルドと本番ビルドの設定 apkの自動生成 http://edywrite.blogspot.jp/2015/09/android-4-apk.html
+    signingConfigs {
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+        release {
+            storeFile file("release.keystore")
+            storePassword "fugafugahogehoge"
+            keyAlias "yokomark"
+            keyPassword "foobarbaz"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    productFlavors {
+    }
+
+    //Android Studioを使って誰しも感じることが「ビルドが遅い」
+    //http://www.torutk.com/projects/swe/wiki/Android_Studio%E3%81%AE%E3%82%BB%E3%83%83%E3%83%88%E3%82%A2%E3%83%83%E3%83%97#ビルドが遅い
+    //AndroidStudio2.2から不要。
+    //dexOptions {
+      //  incremental true
+    //}
+}
+configurations {
+    compile.exclude group: "org.apache.httpcomponents", module: "httpclient"
+    //[Q&A]SkyWayの実行時エラーについて https://groups.google.com/forum/#!msg/skywayjs/FONoQgVLP04/4Fz6wgZ3BQAJ
+    all*.exclude module: 'gson'
+}
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    //JUnitとは、Javaプログラムの単体テストを行うためのツールです。
+    //http://www.techscore.com/tech/Java/Others/JUnit/index/
+    compile 'junit:junit:4.12'
+
+    //https://github.com/nttcom/SkyWay-Android-Sample/blob/master/app/build.gradle
+    compile(name: 'SkyWay', ext: 'aar')
+
+    //第51章 依存関係の管理 http://gradle.monochromeroad.com/docs/userguide/dependency_management.html
+    //https://developers.google.com/drive/v2/web/quickstart/android#step_4_prepare_the_project
+    compile 'com.google.android.gms:play-services-identity:10.0.1'
+    compile 'com.google.android.gms:play-services-auth:10.0.1'
+    //https://developers.google.com/android/guides/setup#add_google_play_services_to_your_project
+    compile 'com.google.android.gms:play-services-location:10.0.1'
+    //http://www.atmarkit.co.jp/ait/articles/1509/15/news017_2.html
+    //compile 'com.google.apis:google-api-services-drive:v2-rev177-1.20.0'
+    //http://stackoverflow.com/questions/30460148/dependency-ignored-because-of-conflict-android-studio
+    compile('com.google.apis:google-api-services-drive:v2-rev177-1.20.0') {
+        exclude module: 'httpclient' //by artifact name
+        exclude group: 'org.apache.httpcomponents' //by group
+        exclude group: 'org.apache.httpcomponents', module: 'httpclient' //by both name and group
+    }
+    compile 'com.google.apis:google-api-services-plus:v1-rev232-1.20.0'
+    //compile 'com.google.android.gms:play-services:7.5.0'
+    compile 'com.google.api-client:google-api-client-android:1.20.0'
+    compile 'com.google.http-client:google-http-client-gson:1.20.0'
+    //クラスの競合が発生。 http://sooch.hatenablog.com/entry/2016/06/03/201303
+
+}
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+    mavenCentral()
+}
+
+

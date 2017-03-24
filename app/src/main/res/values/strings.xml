@@ -1,0 +1,10 @@
+<resources>
+<string name="app_name">CellularRC</string>
+<string name="connectButton">BT接続</string>
+<string name="disconButton">BT切断</string>
+<string name="DebugRPSButton">Debug RPS</string>
+<string name="switchCamera">SwitchCamera</string>
+<string name="sensor">sensor</string>
+<string name="peer">Peer Stat\n</string>
+<string name="bt">BT stat\n</string>
+</resources>
