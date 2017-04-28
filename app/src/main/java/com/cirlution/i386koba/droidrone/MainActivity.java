@@ -44,6 +44,7 @@ package com.cirlution.i386koba.droidrone;
         import com.google.api.client.json.gson.GsonFactory;
         import com.google.api.services.drive.Drive;
         import com.google.api.services.drive.DriveScopes;
+        import com.google.gson.Gson;
 
         import java.io.IOException;
         import java.lang.reflect.InvocationTargetException;
@@ -56,6 +57,7 @@ package com.cirlution.i386koba.droidrone;
         import java.util.Locale;
         import java.util.Set;
         import java.util.UUID;
+        import java.util.regex.Pattern;
 
         import io.skyway.Peer.Browser.Canvas;
         import io.skyway.Peer.Browser.MediaConstraints;
@@ -93,6 +95,7 @@ package com.cirlution.i386koba.droidrone;
 //[Android] FusedLocationProviderApi を使って位置情報を取得 https://akira-watson.com/android/fusedlocationproviderapi.html
 
 //Freetel MIYABI adbドライバーのインストール方法(Windows 7) http://bengallight.hatenablog.com/entry/2015/10/17/163929
+
 public class MainActivity extends Activity implements SensorEventListener, LineReceiveListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
     private float[] accelerometerValues = new float[3];
@@ -127,7 +130,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     private Bluetooth blue;
     private String msgReceived; // 受信したメッセージを表示するまで一時的に保持する領域
     private String btMsgReceived = ""; // 受信したメッセージを送信するまで一時的に保持する領域
-    private String lastBtMsgReceived = "";
+    //private String lastBtMsgReceived = "";
     private Button btn1;
     private Button btn2;
     private Button btn3;
@@ -224,10 +227,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 Boolean result = mediaStream.switchCamera();
                 if ( result )  {
                     //Success
-                    Log.e("switchCamera.", "Success.");
+                    Log.e(getTag(), "switchCamera Success.");
                 } else {
                     //Failed
-                    Log.e("switchCamera.", "Failed.");
+                    Log.e(getTag(), "switchCamera Failed.");
                 }
             }
         });
@@ -372,7 +375,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 //Log.e("lastUpdateTime", lastUpdateTime.toString());
                 //SimpleDateFormat sdf = new SimpleDateFormat("yyyy'年'MM'月'dd'日'kk'時'mm'分'ss'秒'");
             } catch (PackageManager.NameNotFoundException e) {
-                Log.e("NameNotFoundException", "StackTrace", e);
+                Log.e(getTag(), "NameNotFoundException StackTrace", e);
             }
         }
         telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
@@ -496,7 +499,8 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 if (!btMsgReceived.equals("") && btMsgReceived.length() > 4) {
                     //BTレスポンスが同じ時もあるので前回レスポンスと比較しなくてOK
                     //if ( !lastBtMsgReceived.equals(btMsgReceived) ) {
-                        lastBtMsgReceived = btMsgReceived;
+                        //lastBtMsgReceived = btMsgReceived;
+                        btMsgReceived = btMsgReceived.replaceAll("\r\n|\r|\n", ""); //改行削除
                         String btHead = btMsgReceived.substring(0, 4);
                         if (!btHead.equals("RPS:") && !btHead.equals("BAT:")) {
                             addTextView(btView, btMsgReceived);
@@ -516,11 +520,11 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     Boolean result = mediaStream.switchCamera();
                     if (result) {
                         //Success
-                        Log.e("switchCamera.", "Success.");
+                        Log.e(getTag(), "switchCamera Success.");
                         btn4.setEnabled(true); // カメラ切り替えボタンの許可
                     } else {
                         //Failed
-                        Log.e("switchCamera.", "Failed.");
+                        Log.e(getTag(), "switchCamera Failed.");
                     }
                 }
                 //PID 制御
@@ -576,27 +580,34 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         + "+gI:" + String.format(Locale.getDefault(), "%1.2f", gPowerI) //+ "*" + pidParams[3]
                         + "+gD" + String.format(Locale.getDefault(), "%1.2f", gPowerD)  //+ "*" + pidParams[4];
                         + ",setPitch:" + String.format(Locale.getDefault(), "%3.1f", setPitch);
-                pidView.setText(pidViewStr);
+
                 if ( pidEnable ) {
                     peerRes = "BTC:" + btStr + "1500m";// = 15001500m
+                    pidView.setText(pidViewStr);
                 }
 
                 //Bt接続中　Peerからの文字列、あればBT送信 (Bluetoothコマンドに限定)
                 if (lastBtUpTimeMillis != 0 && !peerRes.equals("") && peerRes.length() > 5 && peerRes.substring(0, 4).equals("BTC:")) {
+                    btMsgReceived = "Peer[" + peerRes + "]";//Btに送信したことをWebで表示するため
                     //Peerからの司令文字列をBT文字列に変換して送信
-                    btMsgReceived = "Peer[" + peerRes + "]";
                     String btCommand = peerRes.substring(4) + "\r\n";
                     peerRes = "";
                     blue.sendData(btCommand.getBytes(), btCommand.length());
                     //Log.d("main", "Bt Send command : " + btCommand);
                     lastBtUpTimeMillis = cTimeMillis;
                 }
+
                 if ( peerConnecting ) {
-                    //JData str(javascript  eval)なのでシングルクオートで簡易化
                     String jData = "{'no':" + tNum + ",'lat':" + tLat + ",'lng':" + tLng + ",'alti':" + tAltitude
-                            + ",'rota':" + tRota + ",'time':" + cTimeMillis + ",'pitch':" + tPitch + ",'roll':" + tRoll + ",'pitchGyro':" + tPitchGyro
+                            + ",'rota':" + tRota + ",'time':" + cTimeMillis + ",'pitch':" + tPitch + ",'roll':" + tRoll
                             + ",'accuracy':" + tAccuracy + ",'batLevel':" + batLevel + ",'batTemp':" + batTemp + ",'lte':" + lteSignalStrength
-                            + ",'btr':" + '"' + btMsgReceived + '"' + ",'pwm':" + '"' +  pwmStr + '"' + ",'pid':" + '"' + pidViewStr + '"'+ "}\n"; //改行で配列にする
+                            + ",'btr':" + '"' + btMsgReceived + '"';
+                    if (pidEnable) {
+                        jData += ",'pitchGyro':" + tPitchGyro + ",'pwm':" + '"' +  pwmStr + '"' + ",'pid':" + '"' + pidViewStr + '"';
+                    }
+                    jData += "}\n"; //改行で配列にする
+                    jData = jData.replaceAll("'", "\""); //シングルクオートを置換
+
                     //peerDataConnを毎回チェックして、peerDataConnなければ再接続
                     boolean Result = true;
                     if ( peerConnErrCount < 10 ) { //だいたい12回くらいエラーを出すとアプリ停止するので10回まで再試行
@@ -604,7 +615,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         btMsgReceived = "";
 
                     } else { //Peer再接続処理
-                        Log.e("peerDataConn count", "err = 10.");
+                        Log.e(getTag(), "peerDataConn count err = 10.");
                         peerConnecting = false;
                         peerConnErrCount = 0;
                         //ToDo: Peer再接続
@@ -622,7 +633,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             //根拠は分からないが、PeerDestoyから1秒立ってから再接続で成功する。
             //Web再読込時はPeerID作成しないほうが良いのでは？　30秒にする
             if ( lastPeerCloseTimeMillis != 0 && cTimeMillis > lastPeerCloseTimeMillis + 30000L ) {
-                Log.e("Peer Reconnect.", "Peer Close から　2秒経過. 再接続.");
+                Log.e(getTag(), "Peer Reconnect. Peer Close から　30秒経過. 再接続.");
                 peerGetID();
                 lastPeerCloseTimeMillis = 0;
             }
@@ -641,7 +652,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     btDisConnect();
                 }
             }
-            //TODO:　Android 自動運転 (Webで実装）
+            //TODO:　Android 自動運転 (2017.4.28現在、Webで実装中）
             // https://developers.google.com/maps/documentation/android-api/utility/
             //TODO:　スマフォのライトをリモートON
         }
@@ -655,35 +666,35 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Log.e("onActivityResult:", "requestCode:" + requestCode + ", resultCode:" + resultCode);
+        Log.e(getTag(), "onActivityResult: requestCode:" + requestCode + ", resultCode:" + resultCode);
         switch (requestCode) {
             case REQUEST_ACCOUNT_CHOOSER:
                 if ( resultCode == RESULT_OK && data != null ) {
                     String accountName = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
-                    Log.e("ACCOUNT_CHOOSER:", "Account Name:" + accountName);
+                    Log.e(getTag(), "ACCOUNT_CHOOSER: Account Name:" + accountName);
                     if ( accountName != null ) {
                         mCredential.setSelectedAccountName(accountName);
-                        Log.e("ACCOUNT_CHOOSER:", "GoogleDrive login:" + accountName);
+                        Log.e(getTag(), "ACCOUNT_CHOOSER: GoogleDrive login:" + accountName);
                         //addTextView(peerView, "Google Login:" + accountName);
                         activityResult = "Google Login:" + accountName;
                         peerGetID();
                     }
                 } else {
                     // エラー処理
-                    Log.e("onActivityResult", "else ((resultCode == RESULT_OK) && (data != null))");
+                    Log.e(getTag(), "onActivityResult else ((resultCode == RESULT_OK) && (data != null))");
                     //addTextView(peerView, "アカウント名を取得失敗");
                     activityResult = "アカウント名を取得失敗";
                 }
                 break;
             case REQUEST_AUTHORIZATION_FROM_DRIVE:
                 if ( resultCode == RESULT_OK ) {
-                    Log.e("onActivityResult", "else (resultCode == RESULT_OK)");
+                    Log.e(getTag(), "onActivityResult else (resultCode == RESULT_OK)");
                     peerGetID();
                     //addTextView(peerView, " : Login success.");
                     activityResult += " : Login success.";
                 } else {
                     // エラー処理
-                    Log.e("onActivityResult", "else (resultCode == RESULT_OK)");
+                    Log.e(getTag(), "onActivityResult else (resultCode == RESULT_OK)");
                     //addTextView(peerView, " 認証に失敗");
                     activityResult += " :  認証に失敗.";
                 }
@@ -713,10 +724,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 
         if (peer != null && !peer.isDisconnected) {
             peer.destroy();
-            Log.e("peer : ", "destroy");
+            Log.e(getTag(), "peer : destroy");
             //addTextView(peerView, "peerD.destroy.");
         }
-        Log.e("main", "Finish app.");
+        Log.e(getTag(), "Finish app.");
         finish(); // アプリを終了する
     }
 
@@ -791,7 +802,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             public void onCallback(Object object) {
                 //DataEvent/ERROR
                 PeerError error = (PeerError) object;
-                Log.e("peer", error.message);
+                Log.e(getTag(), "peer: " + error.message);
                 addTextView(peerView, "err:" + error.message);
             }
         });
@@ -809,13 +820,13 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                             //DataEvent/OPEN
                             String destPeerId = peerDataConn.peer;
                             addTextView(peerView, "DestPeerID:" + destPeerId);
-                            Log.e("DataConnDestID", destPeerId);
+                            Log.e(getTag(), "DataConnDestID:" + destPeerId);
                             //初回Androidデータを送る
                             //Androidのシステム情報を取得する http://techbooster.jpn.org/andriod/device/1330/
                             boolean bResult = peerDataConn.send(Build.BRAND + "/" + Build.ID + "\n");
                             if (!bResult) {
                                 //送信失敗
-                                Log.e("peer", "bResult Build.BRAND false.");
+                                Log.e(getTag(), "peer bResult Build.BRAND false.");
                             } else {
                                 //送信成功 ログ送信スタート
                                 peerConnecting = true;
@@ -839,7 +850,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                             peerConnecting = false;
                             //DataEvent/ERROR
                             PeerError error = (PeerError) object;
-                            Log.e("peerDataConn", "[Error]" + error.message);
+                            Log.e(getTag(), "peerDataConn [Error]" + error.message);
                             //String strMessage
                             addTextView(peerView, "peerDataConn Err:" + error.message);
                         }
@@ -849,7 +860,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         @Override
                         public void onCallback(Object object) {
                             peerConnecting = false;
-                            Log.e("peerDataConn", "[Close]");
+                            Log.e(getTag(), "peerDataConn [Close]");
                             lastPeerCloseTimeMillis = System.currentTimeMillis();
                         }
                     });
@@ -899,7 +910,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             try {
                 canvasBackCamera.addSrc(mediaStream, 0);
             } catch (NullPointerException e) {
-                Log.e("canvasBackCamera", "[Error]", e);
+                Log.e(getTag(), "canvasBackCamera [Error]", e);
             }
         }
 
@@ -909,7 +920,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         if (peerMediaConn.isOpen) {
             //Toast.makeText(getApplicationContext(), "Calling to " + media.peer, Toast.LENGTH_LONG).show();
             addTextView(peerView, "Call to:" + peerMediaConn.peer);
-            Log.e("peer", "Call to: " + peerMediaConn.peer);
+            Log.e(getTag(), "peer Call to: " + peerMediaConn.peer);
         }
         // err
         peerMediaConn.on(MediaConnection.MediaEventEnum.ERROR, new OnCallback() {
@@ -917,7 +928,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             public void onCallback(Object object) {
                 // DataEvent/ERROR
                 PeerError error = (PeerError) object;
-                Log.e("Calling", "[Error]" + error.message);
+                Log.e(getTag(), "Calling [Error]" + error.message);
                 //String strMessage
                 addTextView(peerView, "Calling Err:" + error.message);
             }
@@ -925,7 +936,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         // Event Close
         peerMediaConn.on(MediaConnection.MediaEventEnum.CLOSE, new OnCallback() {
             public void onCallback(Object object) {
-                Log.e("MediaConnection", "[Close]");
+                Log.e(getTag(), "MediaConnection [Close]");
                 addTextView(peerView, "peerMediaConn: [Close]");
                 lastPeerCloseTimeMillis = System.currentTimeMillis();
             }
@@ -1017,7 +1028,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 
     public void btConnect() {
         //TODO:　リスト表示　Or　起動時自動接続
-        Log.e("BT", "接続start.");
+        Log.e(getTag(), "BT 接続start.");
         addTextView(btView, "デバイス検索開始.");
         //接続可能な Android内のBluetooth を検出
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -1062,7 +1073,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Log.e("SingleChoiceItems" , "Cancel.");
+                Log.e(getTag(), "SingleChoiceItems Cancel.");
             }
         });
 
@@ -1078,11 +1089,11 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 BluetoothDevice bluetoothDevice = devArray.get(select_device[0]);
                 BluetoothSocket bluetoothSock = null;
                 if (bluetoothDevice != null) {
-                    Log.e("bluetoothSock" , "create Socket.");
+                    Log.e(getTag(), "bluetoothSock create Socket.");
                     try {
                         bluetoothSock = bluetoothDevice.createRfcommSocketToServiceRecord(BT_UUID);
                     } catch (IOException e) {
-                        Log.e("bluetoothSock" , "create socket failed.", e);
+                        Log.e(getTag(), "bluetoothSock create socket failed.", e);
                         btDisConnect();
                     }
                 }
@@ -1092,7 +1103,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         if ( blue.connect(bluetoothSock) ) { // もし、接続が成功なら
                             //addTextView(btView,"BtConnected :" + );
                             btMsgReceived = "BtConnected :" + deviceName;
-                            Log.e("BT", deviceName + " 接続成功。");
+                            Log.e(getTag(), "BT: " +deviceName + " 接続成功。");
                             //サーボアタッチ
                             String val = "a\r\n";
                             blue.sendData(val.getBytes(), val.length());
@@ -1101,14 +1112,14 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                             btDisConnect();
                             btMsgReceived = "BT Failed: " + deviceName;
                             addTextView(btView, btMsgReceived);
-                            Log.e("BT", deviceName + " 接続失敗。");
+                            Log.e(getTag(), "BT: " + deviceName + " 接続失敗。");
                             btDisConnect();
                         }
                     }  catch (IOException e) {
-                        Log.e("bluetoothSock", "connect Socket err:", e);
+                        Log.e(getTag(), "bluetoothSock connect Socket err:", e);
                         btMsgReceived = "can not connect: " + deviceName;
                         addTextView(btView, btMsgReceived);
-                        Log.e("BT", deviceName + " 接続不可能。");
+                        Log.e(getTag(), "BT: "+ deviceName + " 接続不可能。");
                         btDisConnect();
                     }
                     addTextView(btView, btMsgReceived);
@@ -1203,4 +1214,21 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 //            return null;
 //        }
 //    }
+
+    //https://blog.isao.co.jp/android%E3%81%AElogcat%E3%81%AEtag%E3%81%AB%E3%82%AF%E3%83%A9%E3%82%B9%E5%90%8D%E3%80%81%E3%83%A1%E3%82%BD%E3%83%83%E3%83%89%E5%90%8D%E3%80%81%E8%A1%8C%E7%95%AA%E5%8F%B7%E3%82%92%E8%A1%A8%E7%A4%BA/
+    private static String getTag() {
+
+        final StackTraceElement trace = Thread.currentThread().getStackTrace()[4];
+        final String cla = trace.getClassName();
+        Pattern pattern = Pattern.compile("[.]+");
+        final String[] splitStr = pattern.split(cla);
+        final String simpleClass = splitStr[splitStr.length - 1];
+
+        final String mthd = trace.getMethodName();
+        final int line = trace.getLineNumber();
+        final String tag = simpleClass + "#" + mthd + ":" + line;
+
+        return tag;
+    }
+
 }
