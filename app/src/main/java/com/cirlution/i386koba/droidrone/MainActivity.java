@@ -44,7 +44,7 @@ package com.cirlution.i386koba.droidrone;
         import com.google.api.client.json.gson.GsonFactory;
         import com.google.api.services.drive.Drive;
         import com.google.api.services.drive.DriveScopes;
-        import com.google.gson.Gson;
+        //import com.google.gson.Gson;
 
         import java.io.IOException;
         import java.lang.reflect.InvocationTargetException;
@@ -413,8 +413,11 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     ArrayList<Float> mDirection = new ArrayList<>();
     ArrayList<Float> mPitch = new ArrayList<>();
     ArrayList<Float> mRoll = new ArrayList<>();
+    ArrayList<Float> lst;
     int sampleCount = 9;//サンプリング数
     int sampleNum = 5;//サンプリングした値の使用値のインデックス
+    String pwmStr;
+    String pidViewStr;
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -463,17 +466,21 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 if ( mDirection.size() == sampleCount ) {
                     //メディアンフィルタ(サンプリング数をソートして中央値を使用)かけて値を取得
                     //その値にさらにローパスフィルタをかける
-                    ArrayList<Float> lst = (ArrayList<Float>) mDirection.clone(); //未チェックキャストの警告について https://teratail.com/questions/620
+                    //lst = new ArrayList<> mDirection.clone(); //未チェックキャストの警告について https://teratail.com/questions/620
+                    lst = new ArrayList<>(mDirection);
                     Collections.sort(lst);
                     direction =( direction * 0.9f ) + lst.get(sampleNum) * 0.1f;
 
-                    lst = (ArrayList<Float>) mPitch.clone();
+                    //lst = (ArrayList<Float>) mPitch.clone();
+                    lst = new ArrayList<>(mPitch);
                     Collections.sort(lst);
                     pitch = ( pitch * 0.9f ) + lst.get(sampleNum) * 0.1f;
 
-                    lst = (ArrayList<Float>) mRoll.clone();
+                    //lst = (ArrayList<Float>) mRoll.clone();
+                    lst = new ArrayList<>(mRoll);
                     Collections.sort(lst);
                     roll = ( roll * 0.9f ) + lst.get(sampleNum) * 0.1f;
+                    //lst.clear();
 
                     //一番最初の値を削除
                     mDirection.remove(0);
@@ -534,11 +541,17 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     gPowerI = 0;
                     setPitch = pitch;
                 }
-                if (pidEnable && peerRes.equals("stopPID")) {
-                    pidEnable = false;
-                    peerRes = "";
+                if (pidEnable) {
+                    String btStr = pidAna(pitch, pitchGyro);
+                    peerRes = "BTC:" + btStr + "1500m";// = 15001500m
+                    //Web PID制御
+                    if (peerRes.equals("stopPID")) {
+                        pidEnable = false;
+                        peerRes = "";
+                    }
                 }
 
+                //WebからPID定数設定
                 if (!peerRes.equals("") && peerRes.substring(0, 4).equals("pid,")) {
                     //文字列を分割する(split) http://www.javadrive.jp/start/string_class/index5.html
                     pidParams = peerRes.split(",", 0);
@@ -550,40 +563,6 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     pwmW = Float.parseFloat(pidParams[5]);
                     kPN = Float.parseFloat(pidParams[6]);
                     peerRes = "";
-                }
-                //http://www.instructables.com/id/Another-Easier-Inverted-Pendulum-in-Japanese/step5/%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AE%E6%9B%B8%E3%81%8D%E8%BE%BC%E3%81%BF/
-                // invertedRobot_v20d_noTimer.ino https://gist.github.com/i386koba/5bc955d2ff768a005139b231c914732f
-                // How to Build a Self-Balancing Autonomous Arduino Bot http://makezine.com/projects/arduroller-self-balancing-robot/
-                // 倒立振子を作ってみた。http://qiita.com/Qikoro/items/d24057b434c44fcdf74e
-
-                float gPowerP = (pitch - setPitch) / 90F;    // P成分：傾き-90～90度 → -1～1
-                gPowerI += gPowerP;     // I成分：傾きの積算。
-                float gPowerD = pitchGyro / 250F;   // D成分：角速度-250～250dps → -1～1
-                // この数字は試行錯誤で調整。gPowerP * 17.0 + gPowerI *  1.5 + gPowerD *  2.0;
-                float power = gPowerP * kP + gPowerI * kI + gPowerD * kD;
-                power = kPN * (Math.max(-1, Math.min(1, power))); // → -1～1
-                // powerをモーター駆動PWMに変換。0～1 → V_MIN～V_MAX
-                //float pwmMAX = servoCenter + 200F;
-                //float pwmMIN = servoCenter - 200F;
-                //int servo = (int) ((pwmMAX - pwmMIN) * Math.abs(power) + pwmMIN);
-                int servo =  servoCenter + (int) (power * pwmW);
-                // 倒れたらモーター停止。
-                if (80 < Math.abs(pitch)) {
-                    servo = servoCenter;
-                    gPowerI = 0;
-                }
-                String pwmStr = String.format(Locale.getDefault(), "%3.0f", power * pwmW) + "," + String.format(Locale.getDefault(), "%1.2f", pitch - setPitch);
-                String btStr = String.format(Locale.getDefault(), "%04d", servo);
-                // デバッグ用。
-                String pidViewStr = "Pow:" + String.format(Locale.getDefault(), "%1.2f", power)
-                        + "=gP:" + String.format(Locale.getDefault(), "%1.2f", gPowerP) //+ "*" + pidParams[2]
-                        + "+gI:" + String.format(Locale.getDefault(), "%1.2f", gPowerI) //+ "*" + pidParams[3]
-                        + "+gD" + String.format(Locale.getDefault(), "%1.2f", gPowerD)  //+ "*" + pidParams[4];
-                        + ",setPitch:" + String.format(Locale.getDefault(), "%3.1f", setPitch);
-
-                if ( pidEnable ) {
-                    peerRes = "BTC:" + btStr + "1500m";// = 15001500m
-                    pidView.setText(pidViewStr);
                 }
 
                 //Bt接続中　Peerからの文字列、あればBT送信 (Bluetoothコマンドに限定)
@@ -613,17 +592,15 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     if ( peerConnErrCount < 10 ) { //だいたい12回くらいエラーを出すとアプリ停止するので10回まで再試行
                         Result = peerDataConn.send(jData);
                         btMsgReceived = "";
-
                     } else { //Peer再接続処理
                         Log.e(getTag(), "peerDataConn count err = 10.");
                         peerConnecting = false;
                         peerConnErrCount = 0;
                         //ToDo: Peer再接続
                         //peerDestroy();
-                        // [Q&A] peer.disconnect と peer.destroy https://groups.google.com/forum/#!topic/skywayjs/_45s2_fGLso
-                        //　Q&A] AndroidSDK Peerのdisconnectとdestroyの違いについて https://groups.google.com/forum/#!topic/skywayjs/N4KmEQyBlTk
-                        //　[Q&A] peer.open後のネットワーク切断とスリープでの挙動について　https://groups.google.com/forum/#!topic/skywayjs/1P0t641t4zY
-
+                        //[Q&A] peer.disconnect と peer.destroy https://groups.google.com/forum/#!topic/skywayjs/_45s2_fGLso
+                        //[Q&A] AndroidSDK Peerのdisconnectとdestroyの違いについて https://groups.google.com/forum/#!topic/skywayjs/N4KmEQyBlTk
+                        //[Q&A] peer.open後のネットワーク切断とスリープでの挙動について　https://groups.google.com/forum/#!topic/skywayjs/1P0t641t4zY
                     }
                     if (!Result) {
                         peerConnErrCount++;//Peer送信失敗回数カウントアップ
@@ -656,6 +633,41 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             // https://developers.google.com/maps/documentation/android-api/utility/
             //TODO:　スマフォのライトをリモートON
         }
+    }
+    //PID計算テスト
+    private String pidAna(float pitch, float pitchGyro) {
+        //もう一つの倒立振子（デジタル版） http://www.instructables.com/id/Another-Easier-Inverted-Pendulum-in-Japanese/step5/%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AE%E6%9B%B8%E3%81%8D%E8%BE%BC%E3%81%BF/
+        // invertedRobot_v20d_noTimer.ino https://gist.github.com/i386koba/5bc955d2ff768a005139b231c914732f
+        // How to Build a Self-Balancing Autonomous Arduino Bot http://makezine.com/projects/arduroller-self-balancing-robot/
+        // 倒立振子を作ってみた。http://qiita.com/Qikoro/items/d24057b434c44fcdf74e
+
+        float gPowerP = (pitch - setPitch) / 90F;    // P成分：傾き-90～90度 → -1～1
+        gPowerI += gPowerP;     // I成分：傾きの積算。
+        float gPowerD = pitchGyro / 250F;   // D成分：角速度-250～250dps → -1～1
+
+        // この数字は試行錯誤で調整。gPowerP * 17.0 + gPowerI *  1.5 + gPowerD *  2.0;
+        float power = gPowerP * kP + gPowerI * kI + gPowerD * kD;
+        power = kPN * (Math.max(-1, Math.min(1, power))); // → -1～1
+        // powerをモーター駆動PWMに変換。0～1 → V_MIN～V_MAX
+        //float pwmMAX = servoCenter + 200F;
+        //float pwmMIN = servoCenter - 200F;
+        //int servo = (int) ((pwmMAX - pwmMIN) * Math.abs(power) + pwmMIN);
+        int servo =  servoCenter + (int) (power * pwmW);
+        pwmStr = String.format(Locale.getDefault(), "%3.0f", power * pwmW) + "," + String.format(Locale.getDefault(), "%1.2f", pitch - setPitch);
+        // デバッグ用。
+        pidViewStr = "Pow:" + String.format(Locale.getDefault(), "%1.2f", power)
+                + "=gP:" + String.format(Locale.getDefault(), "%1.2f", gPowerP) //+ "*" + pidParams[2]
+                + "+gI:" + String.format(Locale.getDefault(), "%1.2f", gPowerI) //+ "*" + pidParams[3]
+                + "+gD" + String.format(Locale.getDefault(), "%1.2f", gPowerD)  //+ "*" + pidParams[4];
+                + ",setPitch:" + String.format(Locale.getDefault(), "%3.1f", setPitch);
+        pidView.setText(pidViewStr);
+
+        // 倒れたらモーター停止。
+        if (80 < Math.abs(pitch)) {
+            servo = servoCenter;
+            gPowerI = 0;
+        }
+        return String.format(Locale.getDefault(), "%04d", servo);
     }
 
     @Override
@@ -1217,18 +1229,15 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 
     //https://blog.isao.co.jp/android%E3%81%AElogcat%E3%81%AEtag%E3%81%AB%E3%82%AF%E3%83%A9%E3%82%B9%E5%90%8D%E3%80%81%E3%83%A1%E3%82%BD%E3%83%83%E3%83%89%E5%90%8D%E3%80%81%E8%A1%8C%E7%95%AA%E5%8F%B7%E3%82%92%E8%A1%A8%E7%A4%BA/
     private static String getTag() {
-
         final StackTraceElement trace = Thread.currentThread().getStackTrace()[4];
         final String cla = trace.getClassName();
         Pattern pattern = Pattern.compile("[.]+");
         final String[] splitStr = pattern.split(cla);
         final String simpleClass = splitStr[splitStr.length - 1];
-
         final String mthd = trace.getMethodName();
         final int line = trace.getLineNumber();
-        final String tag = simpleClass + "#" + mthd + ":" + line;
-
-        return tag;
+        //final String tag = simpleClass + "# " + mthd + ": " + line;
+        return simpleClass + "# " + mthd + ": " + line;
     }
 
 }
