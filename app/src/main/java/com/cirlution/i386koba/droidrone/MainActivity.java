@@ -137,12 +137,16 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     private Button btn4;
 
     //SkyWay
-    private String peerId;
-    private Peer peer;
+    //nttcom/SkyWay-Android-Sample/app/src/main/java/io/skyway/testpeerjava/DataActivity.java
+    //https://github.com/nttcom/SkyWay-Android-Sample/blob/master/app/src/main/java/io/skyway/testpeerjava/DataActivity.java
+    private String _id;
+    private Peer _peer;
+    private DataConnection _data ;
+    //https://github.com/nttcom/SkyWay-Android-Sample/blob/master/app/src/main/java/io/skyway/testpeerjava/MediaActivity.java
+    //nttcom/SkyWay-Android-Sample/app/src/main/java/io/skyway/testpeerjava/MediaActivity.java
+    private MediaConnection _media;
+    private MediaStream _msLocal;
     //private Canvas canvasBackCamera;
-    private DataConnection peerDataConn ;
-    //private MediaConnection peerMediaConn = null;
-    private MediaStream mediaStream;
     //private MediaStream msFront;
     private String peerRes = "";
     private TextView sensorView;
@@ -150,8 +154,8 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     private TextView peerView;
     private TextView btView;
     private String gpsStr = "GPS受信待機中。";
-    //private Boolean peerMOpen = false;
-    private Boolean peerConnecting = false;
+    private Boolean _bConnecting = false;
+    //private Boolean _bCalling = false;
     private int peerConnErrCount = 0;
     //Drive REST API を使用
     //https://developers.google.com/drive/v2/reference/
@@ -224,7 +228,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         btn4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Boolean result = mediaStream.switchCamera();
+                Boolean result = _msLocal.switchCamera();
                 if ( result )  {
                     //Success
                     Log.e(getTag(), "switchCamera Success.");
@@ -521,10 +525,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     btConnect();
                 }
                 //カメラスイッチ切り替え
-                if (mediaStream != null && peerRes.equals("switchCamera")) {
+                if (_msLocal != null && peerRes.equals("switchCamera")) {
                     addTextView(btView, "\n switchCamera.");
                     peerRes = "";
-                    Boolean result = mediaStream.switchCamera();
+                    Boolean result = _msLocal.switchCamera();
                     if (result) {
                         //Success
                         Log.e(getTag(), "switchCamera Success.");
@@ -576,7 +580,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     lastBtUpTimeMillis = cTimeMillis;
                 }
 
-                if ( peerConnecting ) {
+                if ( _bConnecting ) {
                     String jData = "{'no':" + tNum + ",'lat':" + tLat + ",'lng':" + tLng + ",'alti':" + tAltitude
                             + ",'rota':" + tRota + ",'time':" + cTimeMillis + ",'pitch':" + tPitch + ",'roll':" + tRoll
                             + ",'accuracy':" + tAccuracy + ",'batLevel':" + batLevel + ",'batTemp':" + batTemp + ",'lte':" + lteSignalStrength
@@ -590,11 +594,12 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     //peerDataConnを毎回チェックして、peerDataConnなければ再接続
                     boolean Result = true;
                     if ( peerConnErrCount < 10 ) { //だいたい12回くらいエラーを出すとアプリ停止するので10回まで再試行
-                        Result = peerDataConn.send(jData);
+                        Result = _data.send(jData);
                         btMsgReceived = "";
+                        Log.e(getTag(), "peerDataConn err count : " + peerConnErrCount);
                     } else { //Peer再接続処理
-                        Log.e(getTag(), "peerDataConn count err = 10.");
-                        peerConnecting = false;
+                        Log.e(getTag(), "peerDataConn count err over 10.");
+                        //_bConnecting = false;
                         peerConnErrCount = 0;
                         //ToDo: Peer再接続
                         //peerDestroy();
@@ -733,16 +738,81 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         unregisterReceiver(batteryReceiver);
         sensorManager.unregisterListener(this);
         disConnectGooglePlayServices();
-
-        if (peer != null && !peer.isDisconnected) {
-            peer.destroy();
-            Log.e(getTag(), "peer : destroy");
-            //addTextView(peerView, "peerD.destroy.");
-        }
+        destroyPeer();
         Log.e(getTag(), "Finish app.");
         finish(); // アプリを終了する
     }
 
+    private void destroyPeer()  {
+
+        if (null != _data) {
+            _data.close();
+            _bConnecting = false;
+        }
+
+        if (null != _data)  {
+            _data.on(DataConnection.DataEventEnum.OPEN, null);
+            _data.on(DataConnection.DataEventEnum.DATA, null);
+            _data.on(DataConnection.DataEventEnum.CLOSE, null);
+            _data.on(DataConnection.DataEventEnum.ERROR, null);
+            _data = null;
+        }
+
+        if (null != _media) {
+            _media.close();
+            //_bCalling = false;
+        }
+
+//リモート映像（未使用）
+//        if (null != _msRemote)  {
+//            Canvas canvas = (Canvas) findViewById(R.id.svPrimary);
+//            canvas.removeSrc(_msRemote, 0);
+//        https://groups.google.com/forum/#!msg/skywayjs/B4os4NRRltY/tCsGQARTAQAJ
+//            _msRemote.close();
+//            _msRemote = null;
+//        }
+
+        if (null != _msLocal) {
+            Canvas canvas = (Canvas) findViewById(R.id.svSecondary);
+            canvas.removeSrc(_msLocal, 0);
+            //https://groups.google.com/forum/#!msg/skywayjs/B4os4NRRltY/tCsGQARTAQAJ
+            if (null != _msLocal) { //nullチェックを直前に追加
+                _msLocal.close();
+                _msLocal = null;
+            }
+        }
+
+        if (null != _media)  {
+            if (_media.isOpen)   {
+                _media.close();
+            }
+            _media.on(MediaConnection.MediaEventEnum.STREAM, null);
+            _media.on(MediaConnection.MediaEventEnum.CLOSE, null);
+            _media.on(MediaConnection.MediaEventEnum.ERROR, null);
+            _media = null;
+        }
+
+        Navigator.terminate();
+
+        if (null != _peer) {
+            _peer.on(Peer.PeerEventEnum.OPEN, null);
+            _peer.on(Peer.PeerEventEnum.CONNECTION, null);
+            _peer.on(Peer.PeerEventEnum.CALL, null);
+            _peer.on(Peer.PeerEventEnum.CLOSE, null);
+            _peer.on(Peer.PeerEventEnum.DISCONNECTED, null);
+            _peer.on(Peer.PeerEventEnum.ERROR, null);
+
+            if (!_peer.isDisconnected)  {
+                _peer.disconnect();
+            }
+
+            if (!_peer.isDestroyed)  {
+                _peer.destroy();
+            }
+            _peer = null;
+        }
+        Log.e(getTag(), "peer : destroy");
+    }
     //戻るボタンを押した時に戻るか確認するダイアログを出す。
     //http://dorodoro.info/tip/%E6%88%BB%E3%82%8B%E3%83%9C%E3%82%BF%E3%83%B3%E3%82%92%E6%8A%BC%E3%81%97%E3%81%9F%E6%99%82%E3%81%AB%E6%88%BB%E3%82%8B%E3%81%8B%E7%A2%BA%E8%AA%8D%E3%81%99%E3%82%8B%E3%83%80%E3%82%A4%E3%82%A2%E3%83%AD/
     @Override
@@ -788,28 +858,28 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         peerOptions.domain = "www.cirlution.com";
         peerOptions.debug = Peer.DebugLevelEnum.ALL_LOGS;
         //Data connection Peer
-        peer = new Peer(getApplicationContext(), peerOptions);
+        _peer = new Peer(getApplicationContext(), peerOptions);
         //MyID　生成  // !!!: Event/Open
-        peer.on(Peer.PeerEventEnum.OPEN, new OnCallback() {
+        _peer.on(Peer.PeerEventEnum.OPEN, new OnCallback() {
             @Override
             public void onCallback(Object object) {
                 //PeerEvent/OPEN
                 if (object instanceof String) {
-                    peerId = (String) object;
+                    _id = (String) object;
                     addTextView(peerView, activityResult);
-                    addTextView(peerView, " My peer ID:" + peerId);
+                    addTextView(peerView, " My peer ID:" + _id);
                     //PeerIDをGoogleDriveに保存
                     if (mDrive == null) {
                         HttpTransport transport = AndroidHttp.newCompatibleTransport();
                         GsonFactory factory = new GsonFactory();
                         mDrive = new Drive.Builder(transport, factory, mCredential).build();
                     }
-                    new setDrivePeerIdTask(peerView).execute(mDrive, peerId);
+                    new setDrivePeerIdTask(peerView).execute(mDrive, _id);
                 }
             }
         });
         // !!!: Event/Error
-        peer.on(Peer.PeerEventEnum.ERROR, new OnCallback() {
+        _peer.on(Peer.PeerEventEnum.ERROR, new OnCallback() {
             @Override
             public void onCallback(Object object) {
                 //DataEvent/ERROR
@@ -820,34 +890,34 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         });
 
         // !!!: Event Data Connection
-        peer.on(Peer.PeerEventEnum.CONNECTION, new OnCallback() {
+        _peer.on(Peer.PeerEventEnum.CONNECTION, new OnCallback() {
             @Override
             public void onCallback(Object object) {
                 //PeerEvent/CONNECTION
                 if ((object instanceof DataConnection)) {
-                    peerDataConn = (DataConnection) object;
-                    peerDataConn.on(DataConnection.DataEventEnum.OPEN, new OnCallback() {
+                    _data = (DataConnection) object;
+                    _data.on(DataConnection.DataEventEnum.OPEN, new OnCallback() {
                         @Override
                         public void onCallback(Object object) {
                             //DataEvent/OPEN
-                            String destPeerId = peerDataConn.peer;
+                            String destPeerId = _data.peer;
                             addTextView(peerView, "DestPeerID:" + destPeerId);
                             Log.e(getTag(), "DataConnDestID:" + destPeerId);
                             //初回Androidデータを送る
                             //Androidのシステム情報を取得する http://techbooster.jpn.org/andriod/device/1330/
-                            boolean bResult = peerDataConn.send(Build.BRAND + "/" + Build.ID + "\n");
+                            boolean bResult = _data.send(Build.BRAND + "/" + Build.ID + "\n");
                             if (!bResult) {
                                 //送信失敗
                                 Log.e(getTag(), "peer bResult Build.BRAND false.");
                             } else {
                                 //送信成功 ログ送信スタート
-                                peerConnecting = true;
+                                _bConnecting = true;
                                 peerMediaConnect(destPeerId);
                                 //Toast.makeText(getApplicationContext(), "Send Android Data.", Toast.LENGTH_LONG).show();
                             }
                         }
                     });
-                    peerDataConn.on(DataConnection.DataEventEnum.DATA, new OnCallback() {
+                    _data.on(DataConnection.DataEventEnum.DATA, new OnCallback() {
                         public void onCallback(Object object) {
                             if (object instanceof String) {
                                 peerRes = (String) object;
@@ -856,10 +926,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         }
                     });
                     // !!!: Event/Error
-                    peerDataConn.on(DataConnection.DataEventEnum.ERROR, new OnCallback() {
+                    _data.on(DataConnection.DataEventEnum.ERROR, new OnCallback() {
                         @Override
                         public void onCallback(Object object) {
-                            peerConnecting = false;
+                            _bConnecting = false;
                             //DataEvent/ERROR
                             PeerError error = (PeerError) object;
                             Log.e(getTag(), "peerDataConn [Error]" + error.message);
@@ -868,10 +938,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         }
                     });
                     // Event/Close
-                    peerDataConn.on(DataConnection.DataEventEnum.CLOSE, new OnCallback() {
+                    _data.on(DataConnection.DataEventEnum.CLOSE, new OnCallback() {
                         @Override
                         public void onCallback(Object object) {
-                            peerConnecting = false;
+                            _bConnecting = false;
                             Log.e(getTag(), "peerDataConn [Close]");
                             lastPeerCloseTimeMillis = System.currentTimeMillis();
                         }
@@ -897,7 +967,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 
     // WebRTC media Calling
     public void peerMediaConnect(String destPeerId) {
-        if ( mediaStream == null ) {
+        if ( _msLocal == null ) {
 //            msBack.close();
 //            canvasBackCamera.removeSrc(msBack, 0);
 //            //canvasFrontCamera.removeSrc(msFront, 1);
@@ -905,7 +975,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
 //            //addTextView(peerView, "canvasBackCamera.remove");
 
             //Android Stream 取得
-            Navigator.initialize(peer);
+            Navigator.initialize(_peer);
             //Android Stream 準備
             MediaConstraints constraints = new MediaConstraints();
             //constraints.audioFlag = false;
@@ -916,26 +986,27 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             //minHeight int        縦ピクセル下限を設定します0を指定すると WebRTCエンジン依存となります。デフォルトは0となります。
             //maxFrameRate int        フレームレート上限を設定します0を指定すると WebRTCエンジン依存となります。デフォルトは10となります。
             //minFrameRate int        フレームレート下限を設定します0を指定すると WebRTCエンジン依存となります。デフォルトは0となります。
-            mediaStream = Navigator.getUserMedia(constraints);
+            _msLocal = Navigator.getUserMedia(constraints);
             //private Canvas canvasFrontCamera;
-            Canvas canvasBackCamera = (Canvas) findViewById(R.id.svBackCamera);
+            Canvas canvas = (Canvas) findViewById(R.id.svSecondary);
             try {
-                canvasBackCamera.addSrc(mediaStream, 0);
+                canvas.addSrc(_msLocal, 0);
             } catch (NullPointerException e) {
                 Log.e(getTag(), "canvasBackCamera [Error]", e);
             }
         }
 
         CallOption option = new CallOption();
-        MediaConnection peerMediaConn = peer.call(destPeerId, mediaStream, option);
+        _media = _peer.call(destPeerId, _msLocal, option);
         // Media接続成功　
-        if (peerMediaConn.isOpen) {
+        if (_media.isOpen) {
             //Toast.makeText(getApplicationContext(), "Calling to " + media.peer, Toast.LENGTH_LONG).show();
-            addTextView(peerView, "Call to:" + peerMediaConn.peer);
-            Log.e(getTag(), "peer Call to: " + peerMediaConn.peer);
+            addTextView(peerView, "Call to:" + _media.peer);
+            Log.e(getTag(), "peer Call to: " + _media.peer);
+            //_bCalling = true;
         }
         // err
-        peerMediaConn.on(MediaConnection.MediaEventEnum.ERROR, new OnCallback() {
+        _media.on(MediaConnection.MediaEventEnum.ERROR, new OnCallback() {
             @Override
             public void onCallback(Object object) {
                 // DataEvent/ERROR
@@ -943,14 +1014,16 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 Log.e(getTag(), "Calling [Error]" + error.message);
                 //String strMessage
                 addTextView(peerView, "Calling Err:" + error.message);
+                //_bCalling = false;
             }
         });
         // Event Close
-        peerMediaConn.on(MediaConnection.MediaEventEnum.CLOSE, new OnCallback() {
+        _media.on(MediaConnection.MediaEventEnum.CLOSE, new OnCallback() {
             public void onCallback(Object object) {
                 Log.e(getTag(), "MediaConnection [Close]");
                 addTextView(peerView, "peerMediaConn: [Close]");
                 lastPeerCloseTimeMillis = System.currentTimeMillis();
+                //_bCalling = false;
             }
         });
     }

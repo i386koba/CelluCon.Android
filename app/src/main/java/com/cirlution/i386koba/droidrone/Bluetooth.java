@@ -60,23 +60,26 @@ public class Bluetooth {
     }
 
     public void close() {
-        if (bluetoothSock != null) {
-            Log.e(LOG_TITLE, "Socket Close request.");
-            try {
-                bluetoothSock.close();
-            } catch (IOException e) {
-                Log.e(LOG_TITLE, "Socket Close error");
-            }
-            bluetoothSock = null;
-        }
+        //受信停止
         try {
             if (bluetoothReceiver != null) {
                 bluetoothReceiver.finish();
+                //Thread クラスの join() というインスタンスメソッドを呼び出すと、そのインスタンスが表すスレッドが終了するまで (run メソッドを抜けるまで) 待機する。スレッドが終了したら join メソッドから帰ってきて、プログラムの続きを実行する。
                 bluetoothReceiver.join();
                 bluetoothReceiver = null;
+                //ソケットクローズ
+                if (bluetoothSock != null) {
+                    Log.e(LOG_TITLE, "Socket Close request.");
+                    try {
+                        bluetoothSock.close();
+                    } catch (IOException e) {
+                        Log.e(LOG_TITLE, "Socket Close error");
+                    }
+                    bluetoothSock = null;
+                }
             }
         } catch (Exception e) {
-            Log.e(LOG_TITLE, "Receiver Thread Join error.");
+            Log.e(LOG_TITLE, "Receiver Thread finish error.");
         }
     }
 
@@ -94,10 +97,14 @@ public class Bluetooth {
     }
 
     //* 受信スレッド
-    public class ReceiveThread extends Thread {
+    private class ReceiveThread extends Thread {private
         byte[] buffer = new byte[1024];
         //int tempNum = 0;
         private boolean terminate = false;
+
+        private void finish() {
+            terminate = true;
+        }
 
         @Override
         public void run() {
@@ -130,9 +137,6 @@ public class Bluetooth {
                 }
             }
             return numRead;
-        }
-        public void finish() {
-            terminate = true;
         }
     }
 }
