@@ -67,7 +67,7 @@ public class Bluetooth {
                 //Thread クラスの join() というインスタンスメソッドを呼び出すと、そのインスタンスが表すスレッドが終了するまで (run メソッドを抜けるまで) 待機する。スレッドが終了したら join メソッドから帰ってきて、プログラムの続きを実行する。
                 bluetoothReceiver.join();
                 bluetoothReceiver = null;
-                //ソケットクローズ
+                //ソケットクローズ (Readスレッド終了後にBTソケットを終了しないとエラーになる）
                 if (bluetoothSock != null) {
                     Log.e(LOG_TITLE, "Socket Close request.");
                     try {

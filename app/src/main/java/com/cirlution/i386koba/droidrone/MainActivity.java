@@ -596,7 +596,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     if ( peerConnErrCount < 10 ) { //だいたい12回くらいエラーを出すとアプリ停止するので10回まで再試行
                         Result = _data.send(jData);
                         btMsgReceived = "";
-                        Log.e(getTag(), "peerDataConn err count : " + peerConnErrCount);
+               
                     } else { //Peer再接続処理
                         Log.e(getTag(), "peerDataConn count err over 10.");
                         //_bConnecting = false;
@@ -609,6 +609,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     }
                     if (!Result) {
                         peerConnErrCount++;//Peer送信失敗回数カウントアップ
+                        Log.e(getTag(), "peerDataConn err count : " + peerConnErrCount);
                     }
                 }
             }
