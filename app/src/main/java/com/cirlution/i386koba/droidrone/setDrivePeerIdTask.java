@@ -46,6 +46,7 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
         String skyWayRC_FolderId = null;// 指定のタイトルのフォルダID を取得
         Drive mDrive = (Drive) params[0];
         String peerId = (String) params[1];
+        Log.e("doInBackground", mDrive.toString());
         try {
             // API呼び出し  // クエリ文字列をセット（以下は"'root' in parents MIMETYPEを指定）クエリ使わないとレスポンス遅い。ゴミ箱でないクエリ追加
             Drive.Files.List request = mDrive.files().list().setQ("trashed = false and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'");
@@ -72,6 +73,7 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
             // タイトルのファイルの ID を取得
             String fileIdOrNull = null;
             if (skyWayRC_FolderId != null) {
+                Log.e("skyWayRC_FolderId", skyWayRC_FolderId);
                 //ID ファイルチェック
                 // API呼び出し  // クエリ文字列をセット（以下はskyWayRC_FolderIdを指定）
                 Drive.Files.List requestF = mDrive.files().list().setQ("'" + skyWayRC_FolderId + "' in parents");
@@ -96,11 +98,12 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
                 File body = new File();
                 body.setTitle(SKYWAYRC_DIR);
                 body.setMimeType("application/vnd.google-apps.folder");
+                Log.e("Creating a folder", SKYWAYRC_DIR);
                 File f = mDrive.files().insert(body).execute();
                 // folder ID.
                 skyWayRC_FolderId = f.getId();
-                publishProgress("Creating a folder" + f.getTitle());
-                Log.e("Creating a folder", f.getTitle());
+                publishProgress("Created a folder" + f.getTitle());
+                Log.e("Created a folder", f.getTitle());
             }
 
             File body = new File();
@@ -122,6 +125,8 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
             }
         } catch (UserRecoverableAuthIOException e) {
             mIntent = e.getIntent();
+            Log.e("AuthIOException", e.getMessage(), e);
+            publishProgress("AuthIOException error occur...");
         } catch (IOException e) {
             Log.e("doInBackground", e.getMessage(), e);
             publishProgress("doInBackground error occur...");
@@ -133,7 +138,7 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
     protected void onPostExecute(Void unused) {
         if (mIntent != null) {
             //startActivityForResult(mIntent, REQUEST_AUTHORIZATION_FROM_DRIVE);
-            Log.e("onPostExecute", "onPostExecute Done.");
+            Log.e("onPostExecute", mIntent.toString());//"onPostExecute Done.");
         }
     }
 

@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    buildToolsVersion '26.0.2'
 
     defaultConfig {
         applicationId "com.cirlution.i386koba.droidrone"
@@ -62,10 +62,10 @@ dependencies {
 
     //第51章 依存関係の管理 http://gradle.monochromeroad.com/docs/userguide/dependency_management.html
     //https://developers.google.com/drive/v2/web/quickstart/android#step_4_prepare_the_project
-    compile 'com.google.android.gms:play-services-identity:10.0.1'
-    compile 'com.google.android.gms:play-services-auth:10.0.1'
+    compile 'com.google.android.gms:play-services-identity:11.6.0'
+    compile 'com.google.android.gms:play-services-auth:11.6.0'
     //https://developers.google.com/android/guides/setup#add_google_play_services_to_your_project
-    compile 'com.google.android.gms:play-services-location:10.0.1'
+    compile 'com.google.android.gms:play-services-location:11.6.0'
     //http://www.atmarkit.co.jp/ait/articles/1509/15/news017_2.html
     //compile 'com.google.apis:google-api-services-drive:v2-rev177-1.20.0'
     //http://stackoverflow.com/questions/30460148/dependency-ignored-because-of-conflict-android-studio
@@ -86,6 +86,11 @@ repositories {
         dirs 'libs'
     }
     mavenCentral()
+    google()
+    maven {
+        url 'https://maven.google.com/'
+        name 'Google'
+    }
 }
 
 
