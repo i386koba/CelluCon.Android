@@ -358,7 +358,9 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         //http://qiita.com/kubotaku1119/items/9df79c568e100c0c7623
         if (mCredential == null) { //Google account 選択
             //Collection<String> scopes = Arrays.asList(DriveScopes.DRIVE_READONLY,PlusScopes.USERINFO_PROFILE);
-            Collection<String> scopes = Collections.singletonList(DriveScopes.DRIVE_READONLY);
+            //public class DriveScopes Available OAuth 2.0 scopes for use with the Drive API.
+            //https://developers.google.com/resources/api-libraries/documentation/drive/v2/java/latest/com/google/api/services/drive/DriveScopes.html
+            Collection<String> scopes = Collections.singletonList(DriveScopes.DRIVE_FILE);
             mCredential = GoogleAccountCredential.usingOAuth2(getApplicationContext(), scopes);
             //Drive REST API
             //https://developers.google.com/drive/v2/web/quickstart/android#step_5_setup_the_sample
