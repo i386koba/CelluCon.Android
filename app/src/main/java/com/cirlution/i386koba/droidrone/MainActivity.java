@@ -364,6 +364,8 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
             //https://developers.google.com/drive/v2/web/quickstart/android#step_5_setup_the_sample
             //mCredential = GoogleAccountCredential.usingOAuth2(this, Arrays.asList(SCOPES));
             startActivityForResult(mCredential.newChooseAccountIntent(), REQUEST_ACCOUNT_CHOOSER);
+            // Debug
+            //mCredential.getGoogleAccountManager();
 
             //パッケージ情報の取得（PackageInfo, getPackageManager()）
             //http://androidgamepark.blogspot.jp/2013/02/packageinfo-getpackagemanager.html

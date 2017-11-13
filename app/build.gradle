@@ -76,8 +76,8 @@ dependencies {
     }
     compile 'com.google.apis:google-api-services-plus:v1-rev232-1.20.0'
     //compile 'com.google.android.gms:play-services:7.5.0'
-    compile 'com.google.api-client:google-api-client-android:1.20.0'
-    compile 'com.google.http-client:google-http-client-gson:1.20.0'
+    compile 'com.google.api-client:google-api-client-android:1.22.0'
+    compile 'com.google.http-client:google-http-client-gson:1.22.0'
     //クラスの競合が発生。 http://sooch.hatenablog.com/entry/2016/06/03/201303
 
 }
