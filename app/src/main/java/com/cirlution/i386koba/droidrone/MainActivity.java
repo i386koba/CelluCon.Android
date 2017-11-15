@@ -153,7 +153,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     private TextView pidView;
     private TextView peerView;
     private TextView btView;
-    private String gpsStr = "GPS受信待機中。";
+    private String gpsStr = "GPS Reception waiting.";
     private Boolean _bConnecting = false;
     //private Boolean _bCalling = false;
     private int peerConnErrCount = 0;
@@ -279,16 +279,16 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
         //GPSセンサーが利用可能か？
         if ( !locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ){
             AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
-            alertDialogBuilder.setMessage("GPSが有効になっていません。\n有効化しますか？").setCancelable(false)
+            alertDialogBuilder.setMessage("Not start GPS.\n Starting？").setCancelable(false)
                     //GPS設定画面起動用ボタンとイベントの定義
-                    .setPositiveButton("GPS設定起動", new DialogInterface.OnClickListener(){
+                    .setPositiveButton("GPS Setting", new DialogInterface.OnClickListener(){
                         public void onClick(DialogInterface dialog, int id) {
                             Intent callGPSSettingIntent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                             startActivity(callGPSSettingIntent);
                         }
                     });
             //キャンセルボタン処理
-            alertDialogBuilder.setNegativeButton("キャンセル",
+            alertDialogBuilder.setNegativeButton("Cancel",
                     new DialogInterface.OnClickListener(){
                         public void onClick(DialogInterface dialog, int id){
                             dialog.cancel();
@@ -509,9 +509,9 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                 String tPitch = String.format(Locale.getDefault(), "%3.1f", pitch);//String.valueOf(pitch);
                 String tRoll = String.format(Locale.getDefault(), "%3.0f", roll);//String.valueOf(roll);
                 String tPitchGyro = String.format(Locale.getDefault(), "%3.0f", pitchGyro);
-                String sensorViewStr = "方角:" + tRota + ",上下角 :" + tPitch + ", 左右角 :" + tRoll + ",Gy:" + tPitchGyro + "\n" + gpsStr;
+                String sensorViewStr = "Direc: " + tRota + ",Pitch: " + tPitch + ",Roll: " + tRoll + ",Gy: " + tPitchGyro + "\n" + gpsStr;
                 sensorView.setText(sensorViewStr);
-                //BT受信文字列 text表示
+                //BT受信文字列 text表示D
                 if (!btMsgReceived.equals("") && btMsgReceived.length() > 4) {
                     //BTレスポンスが同じ時もあるので前回レスポンスと比較しなくてOK
                     //if ( !lastBtMsgReceived.equals(btMsgReceived) ) {
@@ -697,32 +697,38 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     Log.e(getTag(), "ACCOUNT_CHOOSER: Account Name:" + accountName);
                     if ( accountName != null ) {
                         mCredential.setSelectedAccountName(accountName);
-                        Log.e(getTag(), "ACCOUNT_CHOOSER: GoogleDrive login:" + accountName);
+                        Log.e(getTag(), "Google Login:" + accountName);
                         //addTextView(peerView, "Google Login:" + accountName);
                         activityResult = "Google Login:" + accountName;
-                        peerGetID();
+
                     }
                 } else {
                     // エラー処理
-                    Log.e(getTag(), "onActivityResult else ((resultCode == RESULT_OK) && (data != null))");
+                    Log.e(getTag(), "Google Login:miss");
                     //addTextView(peerView, "アカウント名を取得失敗");
-                    activityResult = "アカウント名を取得失敗";
+                    activityResult = "";
                 }
                 break;
             case REQUEST_AUTHORIZATION_FROM_DRIVE:
                 if ( resultCode == RESULT_OK ) {
-                    Log.e(getTag(), "onActivityResult else (resultCode == RESULT_OK)");
-                    peerGetID();
+                    Log.e(getTag(),  "REQUEST_AUTHORIZATION_FROM_DRIVE : Login success.");
+
                     //addTextView(peerView, " : Login success.");
                     activityResult += " : Login success.";
+
                 } else {
                     // エラー処理
-                    Log.e(getTag(), "onActivityResult else (resultCode == RESULT_OK)");
+                    Log.e(getTag(), "REQUEST_AUTHORIZATION_FROM_DRIVE : Login Miss!.");
                     //addTextView(peerView, " 認証に失敗");
-                    activityResult += " :  認証に失敗.";
+                    activityResult = "";
                 }
+                peerGetID();
                 break;
+            default:
+                // エラー処理
+                Log.e(getTag(), "onActivityResult requestCode :" + requestCode + " is default.");
         }
+
     }
     // アクティビティがポーズ状態(バックグラウンド）になったら、
     @Override
@@ -859,6 +865,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     //[Q&A]1つのPeerに複数のコネクションを持たせた時、コネクションのcloseを行うとエラーが発生することがある
     //1つのPeerに複数のコネクションを保持できるものと見受けられます https://groups.google.com/forum/#!topic/skywayjs/a0_S7qTZuPE
     private void peerGetID() {
+        if (activityResult.isEmpty()) {
+            addTextView(peerView, "Google login err!");
+            return;
+        }
         PeerOption peerOptions = new PeerOption();
         peerOptions.key = "30fa6fbf-0cce-45c1-9ef6-2b6191881109";
         peerOptions.domain = "www.cirlution.com";
@@ -881,6 +891,10 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         mDrive = new Drive.Builder(transport, factory, mCredential).build();
                     }
                     new setDrivePeerIdTask(peerView).execute(mDrive, _id);
+
+                    //AsyncTask非同期処理後のコールバック機能
+                    //https://qiita.com/a_nishimura/items/1548e02b96bebd0d43e4
+                    //startActivityForResult(mIntent, REQUEST_AUTHORIZATION_FROM_DRIVE);
                 }
             }
         });

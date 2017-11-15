@@ -27,7 +27,7 @@ import java.util.List;
 //ジェネリクス<>の指定 doInBackgroundメソッドの引数の型, onProgressUpdateメソッドの引数の型, onPostExecuteメソッドの戻り値の型
 //doInBackgroundメソッドに複数の異なるデータ型の引数を渡したい場合は、Object型を指定してdoInBackground内でキャスト
 //  http://niudev.blogspot.jp/2012/02/blog-post.html
-public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
+public class setDrivePeerIdTask extends AsyncTask<Object, String, Intent> {
     private TextView textView;
     static final String SKYWAYRC_DIR = "SkyWayRC";
     static final String SKYWAY_ANDROID_ID = "SkyWayAndroid.id";
@@ -39,14 +39,13 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
         this.textView = t;
     }
 
-    private Intent mIntent;
-
     @Override
-    protected Void doInBackground(Object... params) {
+    protected Intent doInBackground(Object... params) {
         String skyWayRC_FolderId = null;// 指定のタイトルのフォルダID を取得
         Drive mDrive = (Drive) params[0];
         String peerId = (String) params[1];
         Log.e("doInBackground", mDrive.toString());
+        Intent mIntent = null;
         try {
             // API呼び出し  // クエリ文字列をセット（以下は"'root' in parents MIMETYPEを指定）クエリ使わないとレスポンス遅い。ゴミ箱でないクエリ追加
             Drive.Files.List request = mDrive.files().list().setQ("trashed = false and 'root' in parents and mimeType = 'application/vnd.google-apps.folder'");
@@ -131,11 +130,11 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
             Log.e("doInBackground", e.getMessage(), e);
             publishProgress("doInBackground error occur...");
         }
-        return null;
-    }
+        return mIntent;
+     }
 
     @Override
-    protected void onPostExecute(Void unused) {
+    protected void onPostExecute(Intent mIntent) {
         if (mIntent != null) {
             //startActivityForResult(mIntent, REQUEST_AUTHORIZATION_FROM_DRIVE);
             Log.e("onPostExecute", mIntent.toString());//"onPostExecute Done.");
@@ -153,3 +152,5 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Void> {
         //textView.append(msg);
     }
 }
+//AsyncTask非同期処理後のコールバック機能
+//https://qiita.com/a_nishimura/items/1548e02b96bebd0d43e4

@@ -6,8 +6,8 @@ android {
 
     defaultConfig {
         applicationId "com.cirlution.i386koba.droidrone"
-        minSdkVersion 15
-        targetSdkVersion 19
+        minSdkVersion 19
+        targetSdkVersion 22
 
         versionCode 1
         versionName "1.0"
@@ -69,13 +69,18 @@ dependencies {
     compile 'com.google.android.gms:play-services-location:11.6.0'
     //http://www.atmarkit.co.jp/ait/articles/1509/15/news017_2.html
     //compile 'com.google.apis:google-api-services-drive:v2-rev177-1.20.0'
+    compile 'com.google.apis:google-api-services-drive:v2-rev285-1.23.0'
+
     //http://stackoverflow.com/questions/30460148/dependency-ignored-because-of-conflict-android-studio
-    compile('com.google.apis:google-api-services-drive:v2-rev177-1.20.0') {
+    /* compile('com.google.apis:google-api-services-drive:v2-rev177-1.20.0') {
         exclude module: 'httpclient' //by artifact name
         exclude group: 'org.apache.httpcomponents' //by group
         exclude group: 'org.apache.httpcomponents', module: 'httpclient' //by both name and group
-    }
-    compile 'com.google.apis:google-api-services-plus:v1-rev232-1.20.0'
+    } */
+    //compile 'com.google.apis:google-api-services-plus:v1-rev232-1.20.0'
+    // https://mvnrepository.com/artifact/com.google.apis/google-api-services-plus
+    compile group: 'com.google.apis', name: 'google-api-services-plus', version: 'v1-rev531-1.23.0'
+
     //compile 'com.google.android.gms:play-services:7.5.0'
     compile 'com.google.api-client:google-api-client-android:1.22.0'
     compile 'com.google.http-client:google-http-client-gson:1.22.0'
