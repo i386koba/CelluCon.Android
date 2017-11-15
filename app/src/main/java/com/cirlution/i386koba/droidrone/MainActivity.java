@@ -164,7 +164,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     //グーグルのAPIを使うときに欠かせないGoogle OAuthの作り方と使い方 (3/3)
     //http://www.atmarkit.co.jp/ait/articles/1509/15/news017_3.html
     private static final int REQUEST_ACCOUNT_CHOOSER = 1;
-    private static final int REQUEST_AUTHORIZATION_FROM_DRIVE = 2;
+    public static final int REQUEST_AUTHORIZATION_FROM_DRIVE = 2;
     private GoogleAccountCredential mCredential;
     private Drive mDrive;
     private String activityResult = "";
@@ -708,6 +708,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     //addTextView(peerView, "アカウント名を取得失敗");
                     activityResult = "";
                 }
+                peerGetID();
                 break;
             case REQUEST_AUTHORIZATION_FROM_DRIVE:
                 if ( resultCode == RESULT_OK ) {
@@ -722,7 +723,6 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                     //addTextView(peerView, " 認証に失敗");
                     activityResult = "";
                 }
-                peerGetID();
                 break;
             default:
                 // エラー処理
@@ -865,7 +865,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
     //[Q&A]1つのPeerに複数のコネクションを持たせた時、コネクションのcloseを行うとエラーが発生することがある
     //1つのPeerに複数のコネクションを保持できるものと見受けられます https://groups.google.com/forum/#!topic/skywayjs/a0_S7qTZuPE
     private void peerGetID() {
-        if (activityResult.isEmpty()) {
+        if (activityResult.equals("")) {
             addTextView(peerView, "Google login err!");
             return;
         }
@@ -890,7 +890,7 @@ public class MainActivity extends Activity implements SensorEventListener, LineR
                         GsonFactory factory = new GsonFactory();
                         mDrive = new Drive.Builder(transport, factory, mCredential).build();
                     }
-                    new setDrivePeerIdTask(peerView).execute(mDrive, _id);
+                    new setDrivePeerIdTask(peerView).execute(mDrive, _id, this);
 
                     //AsyncTask非同期処理後のコールバック機能
                     //https://qiita.com/a_nishimura/items/1548e02b96bebd0d43e4

@@ -1,5 +1,7 @@
 package com.cirlution.i386koba.droidrone;
 
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -18,6 +20,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static com.cirlution.i386koba.droidrone.MainActivity.REQUEST_AUTHORIZATION_FROM_DRIVE;
 
 // Created by kobayashi on 2016/03/16.
 
@@ -38,12 +42,13 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Intent> {
         super();
         this.textView = t;
     }
-
+    Context context;
     @Override
     protected Intent doInBackground(Object... params) {
         String skyWayRC_FolderId = null;// 指定のタイトルのフォルダID を取得
         Drive mDrive = (Drive) params[0];
         String peerId = (String) params[1];
+        context = (Context) params[2];
         Log.e("doInBackground", mDrive.toString());
         Intent mIntent = null;
         try {
@@ -136,7 +141,7 @@ public class setDrivePeerIdTask extends AsyncTask<Object, String, Intent> {
     @Override
     protected void onPostExecute(Intent mIntent) {
         if (mIntent != null) {
-            //startActivityForResult(mIntent, REQUEST_AUTHORIZATION_FROM_DRIVE);
+            ((Activity) context).startActivityForResult(mIntent, REQUEST_AUTHORIZATION_FROM_DRIVE);
             Log.e("onPostExecute", mIntent.toString());//"onPostExecute Done.");
         }
     }
